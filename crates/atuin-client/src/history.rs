@@ -184,13 +184,19 @@ impl Version {
 /// This is deliberately not [`Version::min_fields`]: fields appended to the latest version grow
 /// this count, while `min_fields` stays at the 12 fields V2 launched with so that entries written
 /// before the new fields existed still decode.
-const LATEST_SERIALIZED_FIELDS: u32 = 13;
+const LATEST_SERIALIZED_FIELDS: u32 = 14;
 
 /// A V2 record contains `author_kind` iff it has at least this many fields.
 ///
 /// Frozen forever at the position `author_kind` was appended at; do not grow it alongside
 /// [`LATEST_SERIALIZED_FIELDS`].
 const V2_AUTHOR_KIND_FIELD_NUMBER: u32 = 13;
+
+/// a V2 record contains OS iff it has atleast this many fields.
+/// 
+/// Frozen forever at the position `os` was appended at; do not grow it alongside
+/// [`LATEST_SERIALIZED_FIELDS`].
+const V2_OS_FIELD_NUMBER: u32 = 14;
 
 // Because of how our encoding/decoding protocol worked, unlike all other UUID types in Atuin, which
 // use hyphenated encoding, this one displays as the simple (hyphen-less) representation. This
@@ -326,6 +332,9 @@ pub struct History {
     ///
     /// When this is `None`, [`History::is_agent`] guesses from the author name.
     pub author_kind: Option<AuthorKind>,
+    /// The OS of the system on which this command was executed.
+    ///  When importing the history we pragmatically assume it was executed on that machine OS itself. 
+    pub os: Option<String> 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -363,6 +372,7 @@ impl History {
         deleted_at: Option<OffsetDateTime>,
         shell: Option<String>,
         author_kind: Option<AuthorKind>,
+        os: Option<String>,
     ) -> Self {
         let session = session
             .or_else(|| env::var("ATUIN_SESSION").ok())
@@ -374,6 +384,8 @@ impl History {
         let intent = normalize_optional_string(intent)
             .or_else(|| normalize_optional_string(env::var(HISTORY_INTENT_ENV).ok()));
         let shell = normalize_optional_string(shell);
+        let os = normalize_optional_string(os)
+        .or_else(|| Some(std::env::consts::OS.to_string()));
 
         Self {
             id: HistoryId::from(uuid_v7()),
@@ -389,6 +401,7 @@ impl History {
             deleted_at,
             shell,
             author_kind,
+            os,
         }
     }
 
@@ -458,6 +471,7 @@ impl History {
             self.author_kind.map(AuthorKind::as_u8),
             |output, kind| encode::write_uint8(output, kind).map(|_marker| ()),
         )?;
+        encode::write_optional(&mut output, self.os.as_deref(), encode::write_str)?;
         Ok(DecryptedData(output.into_vec()))
     }
 
@@ -520,6 +534,12 @@ impl History {
             None
         };
 
+        let os = if version >= Version::Two && nfields >= V2_OS_FIELD_NUMBER {
+            decode::read_optional(&mut bytes, decode::read_string)?
+        } else {
+            None
+        };
+
         if version < Version::Two && !bytes.remaining_slice().is_empty() {
             bail!("trailing bytes in encoded history. malformed");
         }
@@ -538,6 +558,7 @@ impl History {
             deleted_at: deleted_at.map(OffsetDateTime::from_unix_nanos_u64),
             shell,
             author_kind,
+            os,
         })
     }
 

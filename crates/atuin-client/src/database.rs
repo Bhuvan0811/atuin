@@ -260,7 +260,8 @@ impl SearchMode {
 }
 
 pub const HISTORY_COLUMNS: &str = "id, timestamp, duration, exit, command, cwd, session, \
-                                   hostname, deleted_at, author, intent, shell, author_kind";
+                                   hostname, deleted_at, author, intent, shell, author_kind, \
+                                   os";
 
 // Intended for use on a developer machine and not a sync server.
 // TODO: implement IntoIterator
@@ -290,7 +291,7 @@ impl<'r> ::sqlx::FromRow<'r, SqliteRow> for History {
         let author_kind: Option<i64> = row.try_get("author_kind").ok().flatten();
         let author_kind =
             author_kind.and_then(|kind| u8::try_from(kind).ok()).and_then(AuthorKind::from_repr);
-
+        let os: Option<String> = row.try_get("os").ok().flatten();
         Ok(Self::from_db()
             .id(row.try_get("id")?)
             .timestamp(OffsetDateTime::from_unix_nanos_i64(row.try_get("timestamp")?))
@@ -305,6 +306,7 @@ impl<'r> ::sqlx::FromRow<'r, SqliteRow> for History {
             .deleted_at(deleted_at.map(OffsetDateTime::from_unix_nanos_i64))
             .shell(shell)
             .author_kind(author_kind)
+            .os(os)
             .build()
             .into())
     }

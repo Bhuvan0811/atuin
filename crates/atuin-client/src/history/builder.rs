@@ -30,6 +30,8 @@ pub struct HistoryImported {
     shell: Option<String>,
     #[builder(default)]
     author_kind: Option<AuthorKind>,
+    #[builder(default, setter(strip_option, into))]
+    os: Option<String>,
 }
 
 impl HistoryImported {
@@ -52,6 +54,7 @@ impl From<HistoryImported> for History {
             None,
             imported.shell,
             imported.author_kind,
+            imported.os,
         )
     }
 }
@@ -79,6 +82,8 @@ pub struct HistoryCaptured {
     shell: Option<String>,
     #[builder(default)]
     author_kind: Option<AuthorKind>,
+    #[builder(default, setter(into))]
+    os: Option<String>,
 }
 
 impl From<HistoryCaptured> for History {
@@ -111,6 +116,7 @@ impl From<HistoryCaptured> for History {
             None,
             captured.shell,
             author_kind,
+            captured.os,
         )
     }
 }
@@ -133,6 +139,7 @@ pub struct HistoryFromDb {
     deleted_at: Option<time::OffsetDateTime>,
     shell: Option<String>,
     author_kind: Option<AuthorKind>,
+    os: Option<String>
 }
 
 impl From<HistoryFromDb> for History {
@@ -153,6 +160,7 @@ impl From<HistoryFromDb> for History {
             deleted_at: from_db.deleted_at,
             shell: from_db.shell,
             author_kind: from_db.author_kind,
+            os: from_db.os,
         }
     }
 }
@@ -181,6 +189,8 @@ pub struct HistoryDaemonCapture {
     shell: Option<String>,
     #[builder(default)]
     author_kind: Option<AuthorKind>,
+    #[builder(default, setter(strip_option, into))]
+    os: Option<String>,
 }
 
 impl From<HistoryDaemonCapture> for History {
@@ -198,6 +208,7 @@ impl From<HistoryDaemonCapture> for History {
             None,
             captured.shell,
             captured.author_kind,
+            captured.os,
         )
     }
 }
